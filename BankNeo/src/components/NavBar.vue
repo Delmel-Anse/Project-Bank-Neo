@@ -11,7 +11,7 @@
         <!-- Links -->
         <div class="hidden md:flex space-x-8">
           <RouterLink to="/" class="text-gray-700 hover:text-blue-600 transition">Home</RouterLink>
-
+          <RouterLink to="accounts" class="text-gray-700 hover:text-blue-600 transition">Account</RouterLink>
           <RouterLink to="/payments" class="text-gray-700 hover:text-blue-600 transition">Payments</RouterLink>
         </div>
 
