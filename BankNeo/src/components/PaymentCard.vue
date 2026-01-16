@@ -59,14 +59,19 @@
         <label class="block text-sm font-medium text-gray-700 mb-1">
           Amount
         </label>
+
+        <!-- use text input so we can control decimals + comma -->
         <input
-            v-model.number="amount"
-            type="number"
-            min="1"
+            v-model="amountInput"
+            inputmode="decimal"
+            type="text"
             class="w-full border rounded-md p-3"
             :class="{ 'border-red-500': amountError }"
-            placeholder="0.00"
+            placeholder="0,00"
+            @input="onAmountInput"
+            @blur="onAmountBlur"
         />
+
         <p v-if="amountError" class="text-sm text-red-600 mt-1">
           {{ amountError }}
         </p>
@@ -75,7 +80,7 @@
       <!-- BALANCE INFO -->
       <p v-if="selectedFromAccount" class="text-sm text-gray-500 mb-4">
         Available balance:
-        <strong>€ {{ selectedFromAccount.balance.toFixed(2) }}</strong>
+        <strong>{{ formatEUR(selectedFromAccount.balance) }}</strong>
       </p>
 
       <!-- SUBMIT -->
@@ -102,7 +107,12 @@ const { accounts } = storeToRefs(bankStore)
 // State
 const fromAccountId = ref('')
 const toAccountId = ref('')
-const amount = ref<number | null>(null)
+
+// Amount is kept as:
+// - amountInput (string) for the textbox (supports comma)
+// - amountValue (number|null) for calculations
+const amountInput = ref('')
+const amountValue = ref<number | null>(null)
 
 // Selected accounts
 const selectedFromAccount = computed(() =>
@@ -119,18 +129,13 @@ const fromAccountError = computed(() =>
 )
 
 const toAccountError = computed(() =>
-    fromAccountId.value && !toAccountId.value
-        ? 'Select a recipient account'
-        : ''
+    fromAccountId.value && !toAccountId.value ? 'Select a recipient account' : ''
 )
 
 const amountError = computed(() => {
-  if (amount.value === null) return ''
-  if (amount.value <= 0) return 'Amount must be greater than 0'
-  if (
-      selectedFromAccount.value &&
-      amount.value > selectedFromAccount.value.balance
-  ) {
+  if (amountValue.value === null) return ''
+  if (amountValue.value <= 0) return 'Amount must be greater than 0'
+  if (selectedFromAccount.value && amountValue.value > selectedFromAccount.value.balance) {
     return 'Insufficient balance'
   }
   return ''
@@ -140,15 +145,77 @@ const amountError = computed(() => {
 const canSubmit = computed(() =>
     !fromAccountError.value &&
     !toAccountError.value &&
+    amountValue.value !== null &&
     !amountError.value
 )
 
 // Label formatter
-function formatAccountLabel(account: {
-  ownerName: string
-  cardNummer: string
-}) {
+function formatAccountLabel(account: { ownerName: string; cardNummer: string }) {
   return `${account.ownerName} – ${account.cardNummer}`
+}
+
+// € 1.234,56 formatting (Belgium)
+function formatEUR(value: number) {
+  return new Intl.NumberFormat('nl-BE', {
+    style: 'currency',
+    currency: 'EUR',
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(value)
+}
+
+// Allow only digits + one comma, and max 2 decimals
+function sanitizeAmountInput(raw: string) {
+  // keep digits and comma only
+  let s = raw.replace(/[^\d,]/g, '')
+
+  // only one comma
+  const firstComma = s.indexOf(',')
+  if (firstComma !== -1) {
+    s =
+        s.slice(0, firstComma + 1) +
+        s.slice(firstComma + 1).replace(/,/g, '')
+  }
+
+  // max 2 decimals
+  if (firstComma !== -1) {
+    const [intPart, decPart = ''] = s.split(',')
+    s = intPart + ',' + decPart.slice(0, 2)
+  }
+
+  // prevent leading zeros like 00012 (optional, keeps it nicer)
+  // keep "0," valid
+  if (s.length > 1 && s.startsWith('0') && !s.startsWith('0,')) {
+    s = s.replace(/^0+/, '')
+    if (s === '') s = '0'
+  }
+
+  return s
+}
+
+function parseAmountToNumber(s: string): number | null {
+  if (!s) return null
+  // convert "12,34" -> 12.34
+  const normalized = s.replace(',', '.')
+  const n = Number(normalized)
+  if (!Number.isFinite(n)) return null
+  return n
+}
+
+function onAmountInput() {
+  amountInput.value = sanitizeAmountInput(amountInput.value)
+  amountValue.value = parseAmountToNumber(amountInput.value)
+}
+
+// On blur: force 2 decimals display (e.g. "5" -> "5,00", "5,1" -> "5,10")
+function onAmountBlur() {
+  const n = amountValue.value
+  if (n === null) {
+    amountInput.value = ''
+    return
+  }
+  // show with comma + 2 decimals
+  amountInput.value = n.toFixed(2).replace('.', ',')
 }
 
 // Submit
@@ -158,12 +225,13 @@ function submitPayment() {
   bankStore.transfer(
       fromAccountId.value,
       toAccountId.value,
-      amount.value!,
+      amountValue.value!,
       'Internal transfer'
   )
 
   // Reset form
-  amount.value = null
+  amountInput.value = ''
+  amountValue.value = null
   toAccountId.value = ''
 }
 </script>

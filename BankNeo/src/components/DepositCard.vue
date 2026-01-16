@@ -63,7 +63,7 @@
       <!-- Submit -->
       <button
           :disabled="!canSubmit"
-          @click="deposit"
+          @click="doDeposit"
           class="w-full bg-green-600 disabled:bg-gray-400 text-white py-3 rounded hover:bg-green-700 transition"
       >
         Deposit Money
@@ -94,13 +94,16 @@ const selectedAccount = computed(() =>
 
 // Validation
 const amountError = computed(() => {
-  if (amount.value === null || amount.value <= 0) return 'Enter an amount greater than 0'
+  if (amount.value === null) return ''
+  if (amount.value <= 0) return 'Enter an amount greater than 0'
   if (amount.value > 1000) return 'Maximum deposit per transaction is €1000'
   return ''
 })
 
 const canSubmit = computed(() =>
-    selectedAccount.value !== undefined && !amountError.value
+    selectedAccount.value !== undefined &&
+    amount.value !== null &&
+    !amountError.value
 )
 
 // Label formatter
@@ -110,18 +113,22 @@ function formatAccountLabel(account: { ownerName: string; type: string }) {
   }`
 }
 
-// Deposit logic
-function deposit() {
+// ✅ Deposit logic now uses the store (and logs transaction)
+function doDeposit() {
   errorMessage.value = ''
   successMessage.value = ''
 
-  if (!canSubmit.value) {
+  if (!canSubmit.value || amount.value === null) {
     errorMessage.value = amountError.value || 'Please select an account and enter a valid amount'
     return
   }
 
-  selectedAccount.value!.balance += amount.value!
-  successMessage.value = `€ ${amount.value!.toFixed(2)} deposited successfully`
-  amount.value = null
+  try {
+    bankStore.deposit(accountId.value, amount.value)
+    successMessage.value = `€ ${amount.value.toFixed(2)} deposited successfully`
+    amount.value = null
+  } catch (err: any) {
+    errorMessage.value = err.message
+  }
 }
 </script>

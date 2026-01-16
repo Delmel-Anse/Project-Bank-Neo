@@ -10,11 +10,16 @@ export interface Account {
 }
 
 export interface Transaction {
-    type: 'transfer'
-    from: string
-    to: string
+    type: 'transfer' | 'deposit'
     amount: number
     date: string
+
+    // deposit
+    accountId?: string
+
+    // transfer
+    from?: string
+    to?: string
     recipientName?: string
 }
 
@@ -42,8 +47,10 @@ function cloneAccounts(list: Account[]) {
 }
 
 export const useBankStore = defineStore('bank', () => {
+    // Load from localStorage
     const stored = localStorage.getItem(STORAGE_KEY)
-    const parsed = stored ? JSON.parse(stored) : null
+    const parsed: { accounts?: Account[]; transactions?: Transaction[] } | null =
+        stored ? JSON.parse(stored) : null
 
     const accounts = ref<Account[]>(
         parsed?.accounts ? parsed.accounts : cloneAccounts(DEFAULT_ACCOUNTS)
@@ -53,18 +60,21 @@ export const useBankStore = defineStore('bank', () => {
         parsed?.transactions ? parsed.transactions : []
     )
 
+    // Persist state
     watch(
         () => ({ accounts: accounts.value, transactions: transactions.value }),
         (state) => localStorage.setItem(STORAGE_KEY, JSON.stringify(state)),
         { deep: true }
     )
 
+    // Transfer
     function transfer(fromId: string, toId: string, amount: number, recipientName?: string) {
         if (!Number.isFinite(amount) || amount <= 0) throw new Error('Amount must be greater than 0')
         if (fromId === toId) throw new Error('Cannot transfer to the same account')
 
         const from = accounts.value.find(a => a.id === fromId)
         const to = accounts.value.find(a => a.id === toId)
+
         if (!from || !to) throw new Error('Account not found')
         if (from.balance < amount) throw new Error('Insufficient balance')
 
@@ -83,18 +93,38 @@ export const useBankStore = defineStore('bank', () => {
         transactions.value = transactions.value.slice(0, 10)
     }
 
+    // Deposit
     function deposit(accountId: string, amount: number) {
         if (!Number.isFinite(amount) || amount <= 0) throw new Error('Amount must be greater than 0')
+        if (amount > 1000) throw new Error('Maximum deposit per transaction is €1000')
+
         const acc = accounts.value.find(a => a.id === accountId)
-        if (!acc) throw new Error('Account not found')
+        if (!acc) throw new Error('Account does not exist')
+
         acc.balance += amount
+
+        transactions.value.unshift({
+            type: 'deposit',
+            accountId: acc.id,
+            amount,
+            date: new Date().toISOString(),
+        })
+
+        transactions.value = transactions.value.slice(0, 10)
     }
 
+    // Reset
     function resetAccounts() {
         accounts.value = cloneAccounts(DEFAULT_ACCOUNTS)
         transactions.value = []
         localStorage.removeItem(STORAGE_KEY)
     }
 
-    return { accounts, transactions, transfer, deposit, resetAccounts }
+    return {
+        accounts,
+        transactions,
+        transfer,
+        deposit,
+        resetAccounts,
+    }
 })
