@@ -15,61 +15,57 @@ export interface Transaction {
     to: string
     amount: number
     date: string
-    recipientName?: string // optional
+    recipientName?: string
 }
 
 const STORAGE_KEY = 'bank-state'
 
+const DEFAULT_ACCOUNTS: Account[] = [
+    {
+        id: 'ACC-001',
+        ownerName: 'John Doe',
+        type: 'zichtrekening',
+        cardNummer: 'BE3268549646846',
+        balance: 1000,
+    },
+    {
+        id: 'ACC-002',
+        ownerName: 'John Doe',
+        type: 'spaarrekening',
+        cardNummer: 'BE4436554654632',
+        balance: 250,
+    },
+]
+
+function cloneAccounts(list: Account[]) {
+    return list.map(a => ({ ...a }))
+}
+
 export const useBankStore = defineStore('bank', () => {
     const stored = localStorage.getItem(STORAGE_KEY)
+    const parsed = stored ? JSON.parse(stored) : null
 
     const accounts = ref<Account[]>(
-        stored
-            ? JSON.parse(stored).accounts
-            : [
-                {
-                    id: 'ACC-001',
-                    ownerName: 'John Doe',
-                    type: 'zichtrekening',
-                    cardNummer: 'BE3268549646846',
-                    balance: 1000,
-                },
-                {
-                    id: 'ACC-002',
-                    ownerName: 'John Doe',
-                    type: 'spaarrekening',
-                    cardNummer: 'BE4436554654632',
-                    balance: 250,
-                },
-            ]
+        parsed?.accounts ? parsed.accounts : cloneAccounts(DEFAULT_ACCOUNTS)
     )
 
     const transactions = ref<Transaction[]>(
-        stored ? JSON.parse(stored).transactions : []
+        parsed?.transactions ? parsed.transactions : []
     )
 
-    // Persist state automatically
     watch(
         () => ({ accounts: accounts.value, transactions: transactions.value }),
-        (state) => {
-            localStorage.setItem(STORAGE_KEY, JSON.stringify(state))
-        },
+        (state) => localStorage.setItem(STORAGE_KEY, JSON.stringify(state)),
         { deep: true }
     )
 
-    function transfer(
-        fromId: string,
-        toId: string,
-        amount: number,
-        recipientName?: string // make optional
-    ) {
-        if (amount <= 0) throw new Error('Amount must be greater than zero')
+    function transfer(fromId: string, toId: string, amount: number, recipientName?: string) {
+        if (!Number.isFinite(amount) || amount <= 0) throw new Error('Amount must be greater than 0')
+        if (fromId === toId) throw new Error('Cannot transfer to the same account')
 
-        const from = accounts.value.find((a) => a.id === fromId)
-        const to = accounts.value.find((a) => a.id === toId)
-
-        if (!from || !to) throw new Error('Account does not exist')
-        if (from.id === to.id) throw new Error('Cannot transfer to same account')
+        const from = accounts.value.find(a => a.id === fromId)
+        const to = accounts.value.find(a => a.id === toId)
+        if (!from || !to) throw new Error('Account not found')
         if (from.balance < amount) throw new Error('Insufficient balance')
 
         from.balance -= amount
@@ -81,16 +77,24 @@ export const useBankStore = defineStore('bank', () => {
             to: to.id,
             amount,
             date: new Date().toISOString(),
-            recipientName, // optional for notes only
+            recipientName,
         })
 
         transactions.value = transactions.value.slice(0, 10)
     }
 
-    return {
-        accounts,
-        transactions,
-        transfer,
+    function deposit(accountId: string, amount: number) {
+        if (!Number.isFinite(amount) || amount <= 0) throw new Error('Amount must be greater than 0')
+        const acc = accounts.value.find(a => a.id === accountId)
+        if (!acc) throw new Error('Account not found')
+        acc.balance += amount
     }
-})
 
+    function resetAccounts() {
+        accounts.value = cloneAccounts(DEFAULT_ACCOUNTS)
+        transactions.value = []
+        localStorage.removeItem(STORAGE_KEY)
+    }
+
+    return { accounts, transactions, transfer, deposit, resetAccounts }
+})

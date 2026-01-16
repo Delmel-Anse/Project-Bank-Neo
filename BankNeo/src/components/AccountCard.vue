@@ -1,7 +1,7 @@
 <template>
   <div
       v-if="account"
-      class="w-full max-w-[960px] bg-gradient-to-r from-blue-600 to-blue-500 shadow-lg rounded-2xl p-6 mb-6 mx-auto text-white relative overflow-hidden"
+      class="w-full max-w-[960px] bg-gradient-to-r from-black to-gray-300 shadow-lg rounded-2xl p-6 mb-6 mx-auto text-white relative overflow-hidden border-2 border-black"
   >
     <!-- Card type badge -->
     <div class="absolute top-4 right-4 text-sm bg-white text-blue-600 px-3 py-1 rounded-full font-semibold">
@@ -22,10 +22,9 @@
 </template>
 
 <script setup lang="ts">
-import { defineProps } from 'vue'
-import type { Account } from '../routes/bank'
+import type { Account } from '../routes/bank.ts'
 
-const props = defineProps<{
+defineProps<{
   account?: Account | null
 }>()
 </script>

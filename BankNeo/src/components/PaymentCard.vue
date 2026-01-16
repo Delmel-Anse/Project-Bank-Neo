@@ -1,76 +1,84 @@
 <template>
   <div class="flex flex-col items-center">
-    <!-- Account card only shows when selected -->
-    <AccountCard :account="selectedFromAccount" />
-
-    <!-- Payment form -->
     <div class="w-full max-w-[960px] bg-white shadow-md rounded-2xl p-8 border border-gray-200">
       <h2 class="text-2xl font-semibold text-gray-800 mb-6">
         Make a Payment
       </h2>
 
-      <!-- From Account -->
+      <!-- FROM ACCOUNT -->
       <div class="mb-4">
-        <label class="block text-sm font-medium text-gray-700 mb-1">From Account</label>
+        <label class="block text-sm font-medium text-gray-700 mb-1">
+          From Account
+        </label>
         <select
             v-model="fromAccountId"
             class="w-full border rounded-md p-3 focus:ring-2 focus:ring-blue-500"
+            :class="{ 'border-red-500': fromAccountError }"
         >
           <option disabled value="">Select account</option>
-          <option v-for="account in accounts" :key="account.id" :value="account.id">
+          <option
+              v-for="account in accounts"
+              :key="account.id"
+              :value="account.id"
+          >
             {{ formatAccountLabel(account) }}
           </option>
         </select>
-      </div>
-
-      <!-- Recipient Name -->
-      <div class="mb-4">
-        <label class="block text-sm font-medium text-gray-700 mb-1">Recipient Name</label>
-        <input
-            v-model="recipientName"
-            type="text"
-            class="w-full border rounded-md p-3"
-            placeholder="Account Name (optional)"
-        />
-      </div>
-
-      <!-- Recipient Account Number -->
-      <div class="mb-4">
-        <label class="block text-sm font-medium text-gray-700 mb-1">Recipient Account Number</label>
-        <input
-            v-model="recipientAccount"
-            type="text"
-            class="w-full border rounded-md p-3"
-            placeholder="BEXXXXXXXXXXXXXX"
-        />
-        <p v-if="recipientAccount && !recipientExists" class="text-sm text-red-600 mt-1">
-          Account number does not exist
+        <p v-if="fromAccountError" class="text-sm text-red-600 mt-1">
+          {{ fromAccountError }}
         </p>
       </div>
 
-      <!-- Amount -->
+      <!-- TO ACCOUNT -->
       <div class="mb-4">
-        <label class="block text-sm font-medium text-gray-700 mb-1">Amount</label>
+        <label class="block text-sm font-medium text-gray-700 mb-1">
+          To Account
+        </label>
+        <select
+            v-model="toAccountId"
+            class="w-full border rounded-md p-3 focus:ring-2 focus:ring-blue-500"
+            :class="{ 'border-red-500': toAccountError }"
+            :disabled="!fromAccountId"
+        >
+          <option disabled value="">Select recipient</option>
+          <option
+              v-for="account in recipientAccounts"
+              :key="account.id"
+              :value="account.id"
+          >
+            {{ formatAccountLabel(account) }}
+          </option>
+        </select>
+        <p v-if="toAccountError" class="text-sm text-red-600 mt-1">
+          {{ toAccountError }}
+        </p>
+      </div>
+
+      <!-- AMOUNT -->
+      <div class="mb-4">
+        <label class="block text-sm font-medium text-gray-700 mb-1">
+          Amount
+        </label>
         <input
             v-model.number="amount"
             type="number"
             min="1"
             class="w-full border rounded-md p-3"
+            :class="{ 'border-red-500': amountError }"
             placeholder="0.00"
         />
+        <p v-if="amountError" class="text-sm text-red-600 mt-1">
+          {{ amountError }}
+        </p>
       </div>
 
-      <!-- Available Balance -->
+      <!-- BALANCE INFO -->
       <p v-if="selectedFromAccount" class="text-sm text-gray-500 mb-4">
-        Available balance: <strong>€ {{ selectedFromAccount.balance.toFixed(2) }}</strong>
+        Available balance:
+        <strong>€ {{ selectedFromAccount.balance.toFixed(2) }}</strong>
       </p>
 
-      <!-- Error message -->
-      <p v-if="errorMessage" class="text-sm text-red-600 mb-4">
-        {{ errorMessage }}
-      </p>
-
-      <!-- Submit button -->
+      <!-- SUBMIT -->
       <button
           :disabled="!canSubmit"
           @click="submitPayment"
@@ -86,69 +94,76 @@
 import { ref, computed } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useBankStore } from '../routes/bank'
-import AccountCard from './AccountCard.vue'
 
-// Pinia store
+// Store
 const bankStore = useBankStore()
 const { accounts } = storeToRefs(bankStore)
 
-// Form state
-const fromAccountId = ref<string>('')
-const recipientName = ref<string>('')
-const recipientAccount = ref<string>('')
-const amount = ref<number>(0)
-const errorMessage = ref<string>('')
+// State
+const fromAccountId = ref('')
+const toAccountId = ref('')
+const amount = ref<number | null>(null)
 
-// Selected source account
+// Selected accounts
 const selectedFromAccount = computed(() =>
     accounts.value.find(acc => acc.id === fromAccountId.value)
 )
 
-// Recipient exists (check by card number)
-const recipientExists = computed(() =>
-    accounts.value.some(acc => acc.cardNummer === recipientAccount.value)
+const recipientAccounts = computed(() =>
+    accounts.value.filter(acc => acc.id !== fromAccountId.value)
 )
 
-// Validation for submit
-const canSubmit = computed(() => {
-  if (!selectedFromAccount.value) return false
-  if (amount.value <= 0) return false
-  if (amount.value > selectedFromAccount.value.balance) return false
-  if (!recipientExists.value) return false
-  if (recipientAccount.value === selectedFromAccount.value.cardNummer) return false
-  return true
+// Validation errors
+const fromAccountError = computed(() =>
+    !fromAccountId.value ? 'Select an account to send from' : ''
+)
+
+const toAccountError = computed(() =>
+    fromAccountId.value && !toAccountId.value
+        ? 'Select a recipient account'
+        : ''
+)
+
+const amountError = computed(() => {
+  if (amount.value === null) return ''
+  if (amount.value <= 0) return 'Amount must be greater than 0'
+  if (
+      selectedFromAccount.value &&
+      amount.value > selectedFromAccount.value.balance
+  ) {
+    return 'Insufficient balance'
+  }
+  return ''
 })
 
-// Format dropdown labels
-function formatAccountLabel(account: { ownerName: string; type: string }) {
-  return `${account.ownerName} – ${account.type === 'zichtrekening' ? 'Zichtrekening' : 'Spaarrekening'}`
+// Can submit
+const canSubmit = computed(() =>
+    !fromAccountError.value &&
+    !toAccountError.value &&
+    !amountError.value
+)
+
+// Label formatter
+function formatAccountLabel(account: {
+  ownerName: string
+  cardNummer: string
+}) {
+  return `${account.ownerName} – ${account.cardNummer}`
 }
 
-// Submit payment
+// Submit
 function submitPayment() {
-  errorMessage.value = ''
-
-  if (!canSubmit.value) {
-    errorMessage.value = 'Please fill in all fields correctly'
-    return
-  }
-
-  const recipient = accounts.value.find(acc => acc.cardNummer === recipientAccount.value)
-  if (!recipient) {
-    errorMessage.value = 'Recipient account number does not exist'
-    return
-  }
+  if (!canSubmit.value) return
 
   bankStore.transfer(
       fromAccountId.value,
-      recipient.id,
-      amount.value,
-      recipientName.value
+      toAccountId.value,
+      amount.value!,
+      'Internal transfer'
   )
 
   // Reset form
-  amount.value = 0
-  recipientName.value = ''
-  recipientAccount.value = ''
+  amount.value = null
+  toAccountId.value = ''
 }
 </script>

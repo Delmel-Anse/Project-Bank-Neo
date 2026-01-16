@@ -13,14 +13,11 @@
           <RouterLink to="/" class="text-gray-700 hover:text-blue-600 transition">Home</RouterLink>
           <RouterLink to="accounts" class="text-gray-700 hover:text-blue-600 transition">Account</RouterLink>
           <RouterLink to="/payments" class="text-gray-700 hover:text-blue-600 transition">Payments</RouterLink>
+          <RouterLink to="/deposits" class="text-gray-700 hover:text-blue-600 transition">Deposits</RouterLink>
+          <RouterLink to="/transfer" class="text-gray-700 hover:text-blue-600 transition">Transfers</RouterLink>
         </div>
 
-        <!-- Sign in button -->
-        <div class="flex items-center space-x-4">
-          <button class="px-4 py-2 rounded-md bg-blue-600 text-white hover:bg-blue-700 transition">
-            Sign in
-          </button>
-        </div>
+
 
       </div>
     </div>

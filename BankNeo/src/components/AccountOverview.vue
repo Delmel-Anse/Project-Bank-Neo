@@ -1,8 +1,8 @@
 <template>
-  <section>
+  <section class="w-full">
     <h2 class="text-xl font-semibold mb-4">Accounts</h2>
 
-    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+    <div class="space-y-4">
       <AccountCard
           v-for="account in accounts"
           :key="account.id"
@@ -14,8 +14,8 @@
 
 <script setup lang="ts">
 import { storeToRefs } from 'pinia'
-import { useBankStore } from '../routes/bank'
-import AccountCard from './AccountCard.vue'
+import { useBankStore } from '../routes/bank.ts'
+import AccountCard from '../components/AccountCard.vue'
 
 const bankStore = useBankStore()
 const { accounts } = storeToRefs(bankStore)
