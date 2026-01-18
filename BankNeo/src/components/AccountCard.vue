@@ -1,42 +1,90 @@
 <template>
   <div
       v-if="account"
-      class="w-full max-w-[960px] bg-gradient-to-r from-black to-gray-300 shadow-lg rounded-2xl p-6 mb-6 mx-auto text-white relative overflow-hidden border-2 border-black"
+      class="relative w-full max-w-[520px] aspect-[43/27]
+           rounded-xl p-4 mx-auto text-white
+           shadow-lg border border-black overflow-hidden
+           bg-gradient-to-tr from-black via-gray-900 to-gray-400"
   >
-    <!-- Card type badge -->
+    <!-- BRAND (top-right) -->
+    <div class="absolute right-4 top-4 text-xs font-extrabold tracking-[0.2em] opacity-80">
+      {{ brandText }}
+    </div>
+
+    <!-- CHIP -->
+    <div class="absolute left-4 top-12 h-8 w-12 rounded-md bg-white/20 border border-white/25" />
+
+    <!-- ACCOUNT NUMBER -->
+    <div class="absolute left-4 bottom-16">
+      <div class="text-[9px] tracking-widest opacity-70">ACCOUNT</div>
+      <div class="text-base tracking-[0.15em]">
+        {{ accountDisplay }}
+      </div>
+    </div>
+
+    <!-- CARDHOLDER -->
+    <div class="absolute left-4 bottom-4 min-w-0">
+      <div class="text-[9px] tracking-widest opacity-70">CARDHOLDER</div>
+      <div class="truncate font-semibold tracking-wide text-sm">
+        {{ account.ownerName }}
+      </div>
+    </div>
+
+    <!-- BALANCE -->
+    <div class="absolute right-4 bottom-4 text-right">
+      <div class="text-[9px] tracking-widest opacity-70">BALANCE</div>
+      <div class="font-semibold tracking-wide text-sm">
+        {{ formatEUR(account.balance) }}
+      </div>
+    </div>
+
+    <!-- TYPE BADGE -->
     <div
-        class="absolute top-4 right-4 text-sm bg-white text-blue-600 px-3 py-1 rounded-full font-semibold"
+        class="absolute left-4 top-4 text-[10px]
+             bg-white/90 text-black px-2 py-0.5
+             rounded-full font-semibold"
     >
       {{ account.type === 'zichtrekening' ? 'Zichtrekening' : 'Spaarrekening' }}
     </div>
-
-    <!-- Owner Name -->
-    <h2 class="text-2xl font-bold">
-      {{ account.ownerName }}
-    </h2>
-
-    <!-- Card Number -->
-    <p class="tracking-widest mt-2 text-lg">
-      {{ account.cardNummer }}
-    </p>
-
-    <!-- Balance -->
-    <p class="mt-6 text-lg">
-      Balance:
-      <strong>{{ formatEUR(account.balance) }}</strong>
-    </p>
   </div>
 </template>
 
 <script setup lang="ts">
-import type { Account } from '../routes/bank.ts'
+import { computed } from 'vue'
+import type { Account } from '../routes/bank'
 
-// Props
-defineProps<{
+const props = defineProps<{
   account?: Account | null
+  brand?: string
 }>()
 
-// Belgian euro formatting: € 1.234,56
+const brandText = computed(() => props.brand ?? 'BANK NEO')
+
+// ---- helpers ----
+function groupEvery(input: string, size = 4, separator = ' ') {
+  const cleaned = input.trim()
+  if (!cleaned) return ''
+  const parts: string[] = []
+  for (let i = 0; i < cleaned.length; i += size) {
+    parts.push(cleaned.slice(i, i + size))
+  }
+  return parts.join(separator)
+}
+
+const accountDisplay = computed(() => {
+  const raw = (props.account?.cardNummer ?? '').trim()
+  if (!raw) return 'BE •••• •••• •••• ••••'
+
+  const normalized = raw.replace(/\s+/g, '')
+  const m = normalized.match(/^([A-Za-z]{2})(.*)$/)
+
+  if (m) {
+    return `${m[1].toUpperCase()} ${groupEvery(m[2], 4)}`
+  }
+
+  return groupEvery(normalized, 4)
+})
+
 function formatEUR(value: number) {
   return new Intl.NumberFormat('nl-BE', {
     style: 'currency',

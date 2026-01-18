@@ -1,18 +1,26 @@
 <template>
   <div class="flex flex-col items-center">
-    <div class="w-full max-w-[960px] bg-white shadow-md rounded-2xl p-8 border border-gray-200">
-      <h2 class="text-2xl font-semibold text-gray-800 mb-6">
+    <div
+        class="w-full max-w-[960px] rounded-2xl p-8 border shadow-md
+             bg-white border-gray-200
+             dark:bg-zinc-900 dark:border-zinc-700"
+    >
+      <h2 class="text-2xl font-semibold text-gray-800 dark:text-zinc-100 mb-6">
         Make a Payment
       </h2>
 
       <!-- FROM ACCOUNT -->
       <div class="mb-4">
-        <label class="block text-sm font-medium text-gray-700 mb-1">
+        <label class="block text-sm font-medium text-gray-700 dark:text-zinc-300 mb-1">
           From Account
         </label>
         <select
             v-model="fromAccountId"
-            class="w-full border rounded-md p-3 focus:ring-2 focus:ring-blue-500"
+            class="w-full rounded-md p-3
+                 border border-gray-300 dark:border-zinc-700
+                 bg-white dark:bg-zinc-950
+                 text-gray-900 dark:text-zinc-100
+                 focus:outline-none focus:ring-2 focus:ring-blue-500"
             :class="{ 'border-red-500': fromAccountError }"
         >
           <option disabled value="">Select account</option>
@@ -31,14 +39,19 @@
 
       <!-- TO ACCOUNT -->
       <div class="mb-4">
-        <label class="block text-sm font-medium text-gray-700 mb-1">
+        <label class="block text-sm font-medium text-gray-700 dark:text-zinc-300 mb-1">
           To Account
         </label>
         <select
             v-model="toAccountId"
-            class="w-full border rounded-md p-3 focus:ring-2 focus:ring-blue-500"
-            :class="{ 'border-red-500': toAccountError }"
             :disabled="!fromAccountId"
+            class="w-full rounded-md p-3
+                 border border-gray-300 dark:border-zinc-700
+                 bg-white dark:bg-zinc-950
+                 text-gray-900 dark:text-zinc-100
+                 focus:outline-none focus:ring-2 focus:ring-blue-500
+                 disabled:opacity-60"
+            :class="{ 'border-red-500': toAccountError }"
         >
           <option disabled value="">Select recipient</option>
           <option
@@ -56,20 +69,23 @@
 
       <!-- AMOUNT -->
       <div class="mb-4">
-        <label class="block text-sm font-medium text-gray-700 mb-1">
+        <label class="block text-sm font-medium text-gray-700 dark:text-zinc-300 mb-1">
           Amount
         </label>
 
-        <!-- use text input so we can control decimals + comma -->
         <input
             v-model="amountInput"
             inputmode="decimal"
             type="text"
-            class="w-full border rounded-md p-3"
-            :class="{ 'border-red-500': amountError }"
             placeholder="0,00"
             @input="onAmountInput"
             @blur="onAmountBlur"
+            class="w-full rounded-md p-3
+                 border border-gray-300 dark:border-zinc-700
+                 bg-white dark:bg-zinc-950
+                 text-gray-900 dark:text-zinc-100
+                 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            :class="{ 'border-red-500': amountError }"
         />
 
         <p v-if="amountError" class="text-sm text-red-600 mt-1">
@@ -78,16 +94,28 @@
       </div>
 
       <!-- BALANCE INFO -->
-      <p v-if="selectedFromAccount" class="text-sm text-gray-500 mb-4">
+      <p v-if="selectedFromAccount" class="text-sm text-gray-500 dark:text-zinc-400 mb-4">
         Available balance:
-        <strong>{{ formatEUR(selectedFromAccount.balance) }}</strong>
+        <strong class="text-gray-800 dark:text-zinc-100">
+          {{ formatEUR(selectedFromAccount.balance) }}
+        </strong>
+      </p>
+
+      <!-- ✅ SUCCESS MESSAGE (NEW) -->
+      <p
+          v-if="successMessage"
+          class="text-sm text-green-600 dark:text-green-400 mb-4"
+      >
+        {{ successMessage }}
       </p>
 
       <!-- SUBMIT -->
       <button
           :disabled="!canSubmit"
           @click="submitPayment"
-          class="w-full bg-blue-600 disabled:bg-gray-400 text-white py-3 rounded hover:bg-blue-700 transition"
+          class="w-full py-3 rounded text-white transition
+               bg-blue-600 hover:bg-blue-700
+               disabled:bg-gray-400 disabled:hover:bg-gray-400"
       >
         Send Payment
       </button>
@@ -100,21 +128,20 @@ import { ref, computed } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useBankStore } from '../routes/bank'
 
-// Store
 const bankStore = useBankStore()
 const { accounts } = storeToRefs(bankStore)
 
-// State
+// ids
 const fromAccountId = ref('')
 const toAccountId = ref('')
 
-// Amount is kept as:
-// - amountInput (string) for the textbox (supports comma)
-// - amountValue (number|null) for calculations
+// amount: string input + parsed number
 const amountInput = ref('')
 const amountValue = ref<number | null>(null)
 
-// Selected accounts
+// ✅ NEW: success message state
+const successMessage = ref('')
+
 const selectedFromAccount = computed(() =>
     accounts.value.find(acc => acc.id === fromAccountId.value)
 )
@@ -123,7 +150,7 @@ const recipientAccounts = computed(() =>
     accounts.value.filter(acc => acc.id !== fromAccountId.value)
 )
 
-// Validation errors
+// errors
 const fromAccountError = computed(() =>
     !fromAccountId.value ? 'Select an account to send from' : ''
 )
@@ -141,7 +168,6 @@ const amountError = computed(() => {
   return ''
 })
 
-// Can submit
 const canSubmit = computed(() =>
     !fromAccountError.value &&
     !toAccountError.value &&
@@ -149,12 +175,10 @@ const canSubmit = computed(() =>
     !amountError.value
 )
 
-// Label formatter
 function formatAccountLabel(account: { ownerName: string; cardNummer: string }) {
   return `${account.ownerName} – ${account.cardNummer}`
 }
 
-// € 1.234,56 formatting (Belgium)
 function formatEUR(value: number) {
   return new Intl.NumberFormat('nl-BE', {
     style: 'currency',
@@ -164,42 +188,26 @@ function formatEUR(value: number) {
   }).format(value)
 }
 
-// Allow only digits + one comma, and max 2 decimals
+// --- amount formatting helpers (max 2 decimals, comma) ---
 function sanitizeAmountInput(raw: string) {
-  // keep digits and comma only
   let s = raw.replace(/[^\d,]/g, '')
-
-  // only one comma
   const firstComma = s.indexOf(',')
   if (firstComma !== -1) {
-    s =
-        s.slice(0, firstComma + 1) +
-        s.slice(firstComma + 1).replace(/,/g, '')
-  }
-
-  // max 2 decimals
-  if (firstComma !== -1) {
+    s = s.slice(0, firstComma + 1) + s.slice(firstComma + 1).replace(/,/g, '')
     const [intPart, decPart = ''] = s.split(',')
     s = intPart + ',' + decPart.slice(0, 2)
   }
-
-  // prevent leading zeros like 00012 (optional, keeps it nicer)
-  // keep "0," valid
   if (s.length > 1 && s.startsWith('0') && !s.startsWith('0,')) {
     s = s.replace(/^0+/, '')
     if (s === '') s = '0'
   }
-
   return s
 }
 
 function parseAmountToNumber(s: string): number | null {
   if (!s) return null
-  // convert "12,34" -> 12.34
-  const normalized = s.replace(',', '.')
-  const n = Number(normalized)
-  if (!Number.isFinite(n)) return null
-  return n
+  const n = Number(s.replace(',', '.'))
+  return Number.isFinite(n) ? n : null
 }
 
 function onAmountInput() {
@@ -207,31 +215,41 @@ function onAmountInput() {
   amountValue.value = parseAmountToNumber(amountInput.value)
 }
 
-// On blur: force 2 decimals display (e.g. "5" -> "5,00", "5,1" -> "5,10")
 function onAmountBlur() {
   const n = amountValue.value
   if (n === null) {
     amountInput.value = ''
     return
   }
-  // show with comma + 2 decimals
   amountInput.value = n.toFixed(2).replace('.', ',')
 }
 
-// Submit
 function submitPayment() {
   if (!canSubmit.value) return
 
-  bankStore.transfer(
-      fromAccountId.value,
-      toAccountId.value,
-      amountValue.value!,
-      'Internal transfer'
-  )
+  try {
+    bankStore.transfer(
+        fromAccountId.value,
+        toAccountId.value,
+        amountValue.value!,
+        'Internal transfer'
+    )
 
-  // Reset form
-  amountInput.value = ''
-  amountValue.value = null
-  toAccountId.value = ''
+    // ✅ set success message
+    successMessage.value = `Transfer of ${formatEUR(amountValue.value!)} completed successfully`
+
+    // reset
+    amountInput.value = ''
+    amountValue.value = null
+    toAccountId.value = ''
+
+    // ✅ auto-clear after 3 seconds
+    setTimeout(() => {
+      successMessage.value = ''
+    }, 3000)
+  } catch (err: any) {
+    // optional: if you have error message UI elsewhere, set it here
+    // console.error(err)
+  }
 }
 </script>
