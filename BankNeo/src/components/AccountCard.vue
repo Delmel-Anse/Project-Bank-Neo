@@ -4,7 +4,7 @@
       class="relative w-full max-w-[520px] aspect-[43/27]
            rounded-xl p-4 mx-auto text-white
            shadow-lg border border-black overflow-hidden
-           bg-gradient-to-tr from-black via-gray-900 to-gray-400"
+           bg-gradient-to-tr from-black via-gray-900 to-gray-400 dark:border-zinc-700"
   >
     <!-- BRAND (top-right) -->
     <div class="absolute right-4 top-4 text-xs font-extrabold tracking-[0.2em] opacity-80">
@@ -12,7 +12,7 @@
     </div>
 
     <!-- CHIP -->
-    <div class="absolute left-4 top-12 h-8 w-12 rounded-md bg-white/20 border border-white/25" />
+    <div class="absolute left-4 top-28 h-12 w-16 rounded-md bg-white/20 border border-white/25" />
 
     <!-- ACCOUNT NUMBER -->
     <div class="absolute left-4 bottom-16">
