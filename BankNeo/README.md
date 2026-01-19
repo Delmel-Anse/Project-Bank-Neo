@@ -1,4 +1,4 @@
-🏦 BankNeo — Mini Banking App
+<h1>🏦 BankNeo — Mini Banking App</h1>
 
 BankNeo is a mini banking web application built with Vue 3, TypeScript, Pinia, and Tailwind CSS.
 It simulates core banking functionality such as transfers, deposits, account management, transaction history, and dark mode — without a backend.
